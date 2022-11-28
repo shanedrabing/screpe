@@ -44,8 +44,7 @@ class SeleniumScraper:
         os.environ["WDM_LOG_LEVEL"] = "0"
         path = GeckoDriverManager().install()
         options = Options()
-        if headless:
-            options.add_argument("--headless")
+        options.add_argument("--headless")
         self.driver = webdriver.Firefox(executable_path=path, options=options)
         self.elem = None
         self.url = None
