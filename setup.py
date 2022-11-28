@@ -22,6 +22,8 @@ setuptools.setup(
     ],
     install_requires=[
         "bs4",
+        "lxml",
+        "pandas",
         "requests",
         "selenium",
         "webdriver_manager",

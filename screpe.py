@@ -9,16 +9,17 @@ __email__ = "shane.drabing@gmail.com"
 
 import atexit
 import concurrent.futures
+import pickle
 import os
 import time
 
 import bs4
 import requests
 import selenium.webdriver
-import webdriver_manager.firefox
 
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait as WDW
 
 
 # CONSTANTS
@@ -29,7 +30,6 @@ HEADERS_MOZ = {"User-Agent": USER_MOZ}
 
 BY_XPATH = selenium.webdriver.common.by.By.XPATH
 BY_SELECTOR = selenium.webdriver.common.by.By.CSS_SELECTOR
-WDW = selenium.webdriver.support.ui.WebDriverWait
 
 
 # CLASSES
@@ -51,6 +51,27 @@ class BodaciousSoup(bs4.BeautifulSoup):
 
     def select_text(self, selector):
         return list(map(node_text, self.select(selector)))
+
+
+class Cache:
+    def __init__(self):
+        self.dct = dict()
+
+    def access(self, key, fallback):
+        if key not in self.dct:
+            value = fallback()
+            if value is None:
+                return
+            self.dct[key] = value
+        return self.dct[key]
+
+    def save(self, fpath):
+        with open(fpath, "wb") as fh:
+            pickle.dump(self.dct, fh)
+
+    def load(self, fpath):
+        with open(fpath, "rb") as fh:
+            self.dct = pickle.load(fh)
 
 
 # FUNCTIONS (GENERAL)
@@ -76,6 +97,14 @@ def thread(f, *args):
         return list(exe.map(f, *args))
 
 
+def rate_limit(key, interval, lookup=dict()):
+    if key not in lookup:
+        lookup[key] = 0
+    while (time.monotonic() - lookup[key]) < interval:
+        time.sleep(0.01)
+    lookup[key] = time.monotonic()
+
+
 def wait_for(f, limit=10, pause=0.1):
     start = time.time()
     while not f():
@@ -88,6 +117,10 @@ def wait_for(f, limit=10, pause=0.1):
 
 
 def driver_launch():
+    # lazy import
+    if "webdriver_manager" not in globals():
+        import webdriver_manager.firefox
+
     # silent WDM
     print("Launching driver...", end="\r")
     os.environ["WDM_LOG_LEVEL"] = "0"
@@ -121,9 +154,12 @@ def _driver_loaded():
 
 
 def driver_open(url):
+    # global rate limited set by module functions
+    rate_limit("global", mem.limit)
+
     if "driver" not in dir(mem):
         driver_launch()
-    mem.old_id = _driver_id()
+    mem.old_id = _driver_id()    
     mem.driver.get(url)
     wait_for(_driver_loaded)
     del mem.old_id
@@ -133,8 +169,18 @@ def driver_source():
     return mem.driver.page_source
 
 
-def driver_soup():
-    return cook(driver_source())
+def driver_get_content(url):
+    def f():
+        driver_open(url)
+        return driver_source()
+
+    if mem.is_caching:
+        return mem.cache.access(url, f)
+    return f()
+
+
+def driver_get(url):
+    return cook(driver_get_content(url))
 
 
 def driver_wait_for(selector, timeout=10):
@@ -150,36 +196,96 @@ def driver_click(selector):
     return node
 
 
+# FUNCTIONS (CACHING)
+
+
+def clear_cache():
+    mem.cache = Cache()
+
+
+def save_cache(fpath):
+    if "cache" in dir(mem):
+        mem.cache.save(fpath)
+
+
+def load_cache(fpath):
+    if "cache" not in dir(mem):
+        clear_cache()
+    mem.cache.load(fpath)
+
+
+def set_cache_active():
+    mem.is_caching = True
+    if "cache" not in dir(mem):
+        clear_cache()
+
+
+def set_cache_inactive():
+    mem.is_caching = False
+    
+
+
 # FUNCTIONS (SCREPE)
 
 
+def set_rate_limit(seconds):
+    mem.limit = max(0, float(seconds))
+
+
+def get_content(url):
+    def f():
+        resp = requests.get(url, headers=HEADERS_MOZ)
+        if resp.status_code != 200:
+            return
+        return resp.content
+
+    if mem.is_caching:
+        return mem.cache.access(url, f)
+    return f()
+
+
 def get(url):
-    resp = requests.get(url, headers=HEADERS_MOZ)
-    if resp.status_code != 200:
-        return resp
-    return cook(resp.content)
+    # global rate limited set by module functions
+    rate_limit("global", mem.limit)
+
+    content = get_content(url)
+    if content is None:
+        return
+    return cook(content)
 
 
-def gets(urls):
+def get_many(urls):
     return thread(get, urls)
 
 
-def dip(url):
-    driver_open(url)
-    return driver_soup()
-
-
 def download(url, fpath):
-    resp = requests.get(url, headers=HEADERS_MOZ)
-    if resp.status_code != 200:
-        raise Exception(f"Failed to download {url}")
+    # global rate limited set by module functions
+    rate_limit("global", mem.limit)
+
+    content = get_content(url)
+    if content is None:
+        return
     with open(fpath, "wb") as fh:
-        fh.write(resp.content)
+        fh.write(content)
+
+
+def download_table(url, fpath, which=0, index=False):
+    # global rate limited set by module functions
+    rate_limit("global", mem.limit)
+
+    # lazy import
+    if "pandas" not in globals():
+        import pandas
+
+    dfs = pandas.read_html(url)
+    dfs[which].to_csv(fpath, index=index)
 
 
 # CLEANUP
 
 
+set_rate_limit(0)
+set_cache_inactive()
 atexit.register(driver_close)
 
 
@@ -203,10 +309,19 @@ if __name__ == "__main__":
 
     # request many pages
     urls = N * [URL_WIKIPEDIA]
-    htmls = gets(urls)
+    start = time.time()
+    htmls = get_many(urls)
     print("GATHER".ljust(N), N == len(htmls))
+    print("".ljust(N), round(time.time() - start, 2))
 
     # request many pages with rate limiting
+    rate = 1 / 3
+    set_rate_limit(rate)
+    start = time.time()
+    htmls = get_many(urls)
+    print("LIMIT".ljust(N), N == len(htmls))
+    print("".ljust(N), round(time.time() - start, 2), "::", round(N * rate, 2))
+    set_rate_limit(0)
 
     # download an image
     url = "https://duckduckgo.com/assets/add-to-browser/cppm/laptop.svg"
@@ -226,18 +341,34 @@ if __name__ == "__main__":
     print("HTML".ljust(N), os.path.exists(fpath))
 
     # parse table from page
-
-    # parse nodeset from page
+    url = "https://www.multpl.com/cpi/table/by-month"
+    fpath = "private/test.csv"
+    download_table(url, fpath)
+    print("TABLE".ljust(N), os.path.exists(fpath))
 
     # cache pages to memory
+    set_cache_active()
+    start1 = time.time()
+    html1 = get(URL_WIKIPEDIA)
+    start2 = time.time()
+    html2 = get(URL_WIKIPEDIA)
+    print("CACHE".ljust(N), html1 == html2)
+    print("".ljust(N), round(start2 - start1, 2),
+          "::", round(time.time() - start2, 2))
 
     # cache pages to file
-
-    exit()
+    fpath = "private/cache.bin"
+    save_cache(fpath)
+    clear_cache()
+    load_cache(fpath)
+    start3 = time.time()
+    html3 = get(URL_WIKIPEDIA)
+    print("PICKLE".ljust(N), html1 == html2 == html3)
+    print("".ljust(N), round(time.time() - start3, 2))
 
     # request a dynamic page
     url = URL_NASDAQ + "stocks/aapl/price-earnings-peg-ratios"
-    html = dip(url)
+    html = driver_get(url)
     print("DYNAMIC".ljust(N), bool(html.select_one("table td").text.strip()))
 
     # log into a page
@@ -245,5 +376,5 @@ if __name__ == "__main__":
     node = driver_click("input#searchInput")
     node.send_keys("Selenium")
     driver_click("button")
-    html = driver_soup()
+    html = cook(driver_source())
     print("KEYBOARD".ljust(N), "Selenium" in html.select_one("h1").text)
