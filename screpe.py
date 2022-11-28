@@ -25,20 +25,22 @@ from selenium.webdriver.support.ui import WebDriverWait as WDW
 # CONSTANTS
 
 
+# global variable on which to store elements
+MEM = lambda: None
+
+# webdriver methods
+BY_SELECTOR = selenium.webdriver.common.by.By.CSS_SELECTOR
+BY_XPATH = selenium.webdriver.common.by.By.XPATH
+
+# user agent headers
 USER_MOZ = "Mozilla/5.0 (Windows NT 5.1; rv:52.0) Gecko/20100101 Firefox/103.0"
 HEADERS_MOZ = {"User-Agent": USER_MOZ}
-
-BY_XPATH = selenium.webdriver.common.by.By.XPATH
-BY_SELECTOR = selenium.webdriver.common.by.By.CSS_SELECTOR
 
 
 # CLASSES
 
 
-class mem:
-    pass
-
-
+# some extra methods compared to a BeautifulSoup object
 class BodaciousSoup(bs4.BeautifulSoup):
     def select_one_attr(self, selector, attr):
         return safe_attr(self.select_one(selector), attr)
@@ -53,6 +55,7 @@ class BodaciousSoup(bs4.BeautifulSoup):
         return list(map(node_text, self.select(selector)))
 
 
+# used for caching results from a function
 class Cache:
     def __init__(self):
         self.dct = dict()
@@ -124,51 +127,51 @@ def driver_launch():
         import webdriver_manager.firefox
 
     # silent WDM
-    print("Launching driver...", end="\r")
+    print("Launching webdriver...", end="\r")
     os.environ["WDM_LOG_LEVEL"] = "0"
-    
+
     # options
     opts = selenium.webdriver.firefox.options.Options()
     opts.add_argument("--headless")
-    
+
     # WDM path and launch
     gdm = webdriver_manager.firefox.GeckoDriverManager
     path = gdm(print_first_line=False).install()
-    mem.driver = selenium.webdriver.Firefox(executable_path=path, options=opts)
+    MEM.driver = selenium.webdriver.Firefox(executable_path=path, options=opts)
 
     # clear message
     print(20 * " ", end = "\r")
 
 
 def driver_close():
-    if "driver" in dir(mem):
-        print("Closing driver...", end="\r")
-        mem.driver.close()
+    if "driver" in dir(MEM):
+        print("Closing webdriver...", end="\r")
+        MEM.driver.close()
         print(20 * " ", end = "\r")
 
 
 def _driver_id():
-    return mem.driver.find_element(BY_XPATH, "html").id
+    return MEM.driver.find_element(BY_XPATH, "html").id
 
 
 def _driver_loaded():
-    return mem.old_id != _driver_id()
+    return MEM.old_id != _driver_id()
 
 
 def driver_open(url):
     # global rate limited set by module functions
-    rate_limit("global", mem.limit)
+    rate_limit("global", MEM.limit)
 
-    if "driver" not in dir(mem):
+    if "driver" not in dir(MEM):
         driver_launch()
-    mem.old_id = _driver_id()    
-    mem.driver.get(url)
+    MEM.old_id = _driver_id()    
+    MEM.driver.get(url)
     wait_for(_driver_loaded)
-    del mem.old_id
+    del MEM.old_id
 
 
 def driver_source():
-    return mem.driver.page_source
+    return MEM.driver.page_source
 
 
 def driver_get_content(url):
@@ -176,8 +179,8 @@ def driver_get_content(url):
         driver_open(url)
         return driver_source()
 
-    if mem.is_caching:
-        return mem.cache.access(url, f)
+    if MEM.is_caching:
+        return MEM.cache.access(url, f)
     return f()
 
 
@@ -186,14 +189,14 @@ def driver_get(url):
 
 
 def driver_wait_for(selector, timeout=10):
-    wait = WDW(mem.driver, timeout)
+    wait = WDW(MEM.driver, timeout)
     elem = (BY_SELECTOR, selector)
     wait.until(EC.visibility_of_element_located(elem))
 
 
 def driver_click(selector):
     driver_wait_for(selector)
-    node = mem.driver.find_element(BY_SELECTOR, selector)
+    node = MEM.driver.find_element(BY_SELECTOR, selector)
     node.click()
     return node
 
@@ -202,28 +205,28 @@ def driver_click(selector):
 
 
 def clear_cache():
-    mem.cache = Cache()
+    MEM.cache = Cache()
 
 
 def save_cache(fpath):
-    if "cache" in dir(mem):
-        mem.cache.save(fpath)
+    if "cache" in dir(MEM):
+        MEM.cache.save(fpath)
 
 
 def load_cache(fpath):
-    if "cache" not in dir(mem):
+    if "cache" not in dir(MEM):
         clear_cache()
-    mem.cache.load(fpath)
+    MEM.cache.load(fpath)
 
 
 def set_cache_active():
-    mem.is_caching = True
-    if "cache" not in dir(mem):
+    MEM.is_caching = True
+    if "cache" not in dir(MEM):
         clear_cache()
 
 
 def set_cache_inactive():
-    mem.is_caching = False
+    MEM.is_caching = False
     
 
 
@@ -231,7 +234,7 @@ def set_cache_inactive():
 
 
 def set_rate_limit(seconds):
-    mem.limit = max(0, float(seconds))
+    MEM.limit = max(0, float(seconds))
 
 
 def get_content(url):
@@ -241,14 +244,14 @@ def get_content(url):
             return
         return resp.content
 
-    if mem.is_caching:
-        return mem.cache.access(url, f)
+    if MEM.is_caching:
+        return MEM.cache.access(url, f)
     return f()
 
 
 def get(url):
     # global rate limited set by module functions
-    rate_limit("global", mem.limit)
+    rate_limit("global", MEM.limit)
 
     content = get_content(url)
     if content is None:
@@ -262,7 +265,7 @@ def get_many(urls):
 
 def download(url, fpath):
     # global rate limited set by module functions
-    rate_limit("global", mem.limit)
+    rate_limit("global", MEM.limit)
 
     content = get_content(url)
     if content is None:
@@ -273,7 +276,7 @@ def download(url, fpath):
 
 def download_table(url, fpath, which=0, index=False):
     # global rate limited set by module functions
-    rate_limit("global", mem.limit)
+    rate_limit("global", MEM.limit)
 
     # lazy import
     if "pandas" not in globals():
