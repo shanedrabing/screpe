@@ -21,6 +21,9 @@ setuptools.setup(
         ("", ["LICENSE"])
     ],
     install_requires=[
-        "requests", "bs4"
+        "bs4",
+        "requests",
+        "selenium",
+        "webdriver_manager",
     ]
 )

@@ -130,4 +130,5 @@ dmypy.json
 
 # private files
 build.bat
+private
 test.py
