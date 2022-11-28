@@ -25,5 +25,8 @@ setuptools.setup(
         "requests",
         "selenium",
         "webdriver_manager",
+    ],
+    py_modules=[
+        "screpe"
     ]
 )
