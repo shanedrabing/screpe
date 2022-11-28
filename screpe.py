@@ -9,8 +9,8 @@ __email__ = "shane.drabing@gmail.com"
 
 import atexit
 import concurrent.futures
-import pickle
 import os
+import pickle
 import time
 
 import bs4
@@ -77,19 +77,21 @@ class Cache:
 # FUNCTIONS (GENERAL)
 
 
-def safe_attr(obj, attr):
-    try:
-        return obj[attr]
-    except KeyError:
-        pass
-
-
 def node_text(node):
+    if node is None:
+        return
     return " ".join(node.get_text(" ").split())
 
 
 def cook(html):
     return BodaciousSoup(html, "lxml")
+
+
+def safe_attr(obj, attr):
+    try:
+        return obj[attr]
+    except KeyError:
+        pass
 
 
 def thread(f, *args):
@@ -281,100 +283,9 @@ def download_table(url, fpath, which=0, index=False):
     dfs[which].to_csv(fpath, index=index)
 
 
-# CLEANUP
+# SCRIPT
 
 
 set_rate_limit(0)
 set_cache_inactive()
 atexit.register(driver_close)
-
-
-# SCRIPT
-
-
-if __name__ == "__main__":
-    # constants
-    N = 10
-    URL_NASDAQ = "https://www.nasdaq.com/market-activity/"
-    URL_WIKIPEDIA = "https://www.wikipedia.org/"
-
-    # request a static page
-    html = get(URL_WIKIPEDIA)
-    print("STATIC".ljust(N), "Wikipedia" in html.select_one_text("h1"))
-
-    # request with headers
-    url = URL_NASDAQ + "stocks/aapl/earnings"
-    html = get(url)
-    print("HEADER".ljust(N), html.select_one("table") is not None)
-
-    # request many pages
-    urls = N * [URL_WIKIPEDIA]
-    start = time.time()
-    htmls = get_many(urls)
-    print("GATHER".ljust(N), N == len(htmls))
-    print("".ljust(N), round(time.time() - start, 2))
-
-    # request many pages with rate limiting
-    rate = 1 / 3
-    set_rate_limit(rate)
-    start = time.time()
-    htmls = get_many(urls)
-    print("LIMIT".ljust(N), N == len(htmls))
-    print("".ljust(N), round(time.time() - start, 2), "::", round(N * rate, 2))
-    set_rate_limit(0)
-
-    # download an image
-    url = "https://duckduckgo.com/assets/add-to-browser/cppm/laptop.svg"
-    fpath = "private/test.svg"
-    download(url, fpath)
-    print("IMAGE".ljust(N), os.path.exists(fpath))
-
-    # download a file
-    url = "https://www.google.com/sitemap.xml"
-    fpath = "private/test.xml"
-    download(url, fpath)
-    print("XML".ljust(N), os.path.exists(fpath))
-
-    # download a page
-    fpath = "private/test.html"
-    download(URL_WIKIPEDIA, fpath)
-    print("HTML".ljust(N), os.path.exists(fpath))
-
-    # parse table from page
-    url = "https://www.multpl.com/cpi/table/by-month"
-    fpath = "private/test.csv"
-    download_table(url, fpath)
-    print("TABLE".ljust(N), os.path.exists(fpath))
-
-    # cache pages to memory
-    set_cache_active()
-    start1 = time.time()
-    html1 = get(URL_WIKIPEDIA)
-    start2 = time.time()
-    html2 = get(URL_WIKIPEDIA)
-    print("CACHE".ljust(N), html1 == html2)
-    print("".ljust(N), round(start2 - start1, 2),
-          "::", round(time.time() - start2, 2))
-
-    # cache pages to file
-    fpath = "private/cache.bin"
-    save_cache(fpath)
-    clear_cache()
-    load_cache(fpath)
-    start3 = time.time()
-    html3 = get(URL_WIKIPEDIA)
-    print("PICKLE".ljust(N), html1 == html2 == html3)
-    print("".ljust(N), round(time.time() - start3, 2))
-
-    # request a dynamic page
-    url = URL_NASDAQ + "stocks/aapl/price-earnings-peg-ratios"
-    html = driver_get(url)
-    print("DYNAMIC".ljust(N), bool(html.select_one("table td").text.strip()))
-
-    # log into a page
-    driver_open(URL_WIKIPEDIA)
-    node = driver_click("input#searchInput")
-    node.send_keys("Selenium")
-    driver_click("button")
-    html = cook(driver_source())
-    print("KEYBOARD".ljust(N), "Selenium" in html.select_one("h1").text)
