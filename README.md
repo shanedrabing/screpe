@@ -8,11 +8,11 @@ High-level Python web scraping.
 
 (Crepes not included)
 
-</div>
-
 ## Installation
 
 ### Using `pip`
+
+</div>
 
 The Python package installer makes it easy to install `screpe`.
 
