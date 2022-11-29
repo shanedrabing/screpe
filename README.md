@@ -1,7 +1,3 @@
----
----
-
----
 
 <div align="center">
 
@@ -16,8 +12,6 @@ High-level Python web scraping.
 <br>
 
 ---
-
-<br>
 
 ## Installation
 
@@ -46,8 +40,6 @@ You can also simply download `screpe.py` and place it in your working directory.
 <br>
 
 ---
-
-<br>
 
 <div align="center">
 
@@ -88,5 +80,3 @@ scr = Screpe()
 </div>
 
 [MIT](https://choosealicense.com/licenses/mit/)
-
----
