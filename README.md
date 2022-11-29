@@ -32,7 +32,13 @@ import screpe
 scr = Screpe()
 ```
 
-## Features
+### Requests and BeautifulSoup
+
+### Selenium
+
+### Rate-Limiting
+
+### Caching
 
 ## License
 
