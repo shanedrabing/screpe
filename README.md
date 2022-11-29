@@ -8,7 +8,7 @@ High-level Python web scraping.
 
 Install this module with the Python package installer.
 
-```bash
+```console
 pip install screpe
 ```
 
@@ -16,7 +16,7 @@ pip install screpe
 
 Clone this repository to your local machine with git, then install with Python.
 
-```bash
+```console
 git clone https://github.com/shanedrabing/screpe.git
 cd screpe
 python setup.py install
