@@ -4,9 +4,7 @@
 
 High-level Python web scraping.
 
-<img src="docs/crepe.svg" />
-
-<!-- <img src="docs/crepe.jpg" width="80%" style="border-radius:1em;" /> -->
+<img src="docs/crepe.jpg" width="80%" />
 
 (Crepes not included)
 
