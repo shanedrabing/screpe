@@ -98,4 +98,4 @@ scr = Screpe()
 
 [MIT License](https://choosealicense.com/licenses/mit/)
 
-Copyright (c) 2022 <a href=":-)">Shane Drabing</a>
+Copyright (c) 2022 <a href="https://:-)">Shane Drabing</a>
