@@ -15,7 +15,7 @@ High-level Python web scraping.
 
 ## Installation
 
-</div>
+</div><br>
 
 ### Using `pip`
 
@@ -24,6 +24,8 @@ The Python package installer makes it easy to install `screpe`.
 ```console
 pip install screpe
 ```
+
+<br>
 
 ### Using `git`
 
@@ -45,7 +47,7 @@ You can also simply download `screpe.py` and place it in your working directory.
 
 ## Getting Started
 
-</div>
+</div><br>
 
 Import the module in Python, and initialize a `Screpe` object.
 
@@ -77,6 +79,6 @@ scr = Screpe()
 
 ## License
 
-</div>
+</div><br>
 
 [MIT](https://choosealicense.com/licenses/mit/)
