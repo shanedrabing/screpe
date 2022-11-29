@@ -43,7 +43,7 @@ def node_text(node):
 
     >>> node = soup.select_one("h1")
     >>> node_text(node)
-    'Header Text'
+    'spam eggs and ham'
     """
     if node is None:
         return
@@ -148,8 +148,8 @@ class Screpe:
     # METHODS (REQUESTS)
 
     def get(self, url):
-        content = self.cache_access(("requests", url),
-                                    lambda: self.halt() or get(url))
+        expr = lambda: self.halt() or get(url)
+        content = self.cache_access(("requests", url), expr)
         soup = self.cache_access(("bs4", url), lambda: cook(content))
         return soup
 
@@ -157,8 +157,8 @@ class Screpe:
         return thread(self.get, urls)
 
     def download(self, url, fpath):
-        content = self.cache_access(("requests", url),
-                                    lambda: self.halt() or get(url))
+        expr = lambda: self.halt() or get(url)
+        content = self.cache_access(("requests", url), expr)
         if content is None:
             return
         with open(fpath, "wb") as fh:
