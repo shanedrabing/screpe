@@ -39,10 +39,11 @@ _HEADERS_MOZ = {"User-Agent": _UA_MOZ}
 
 
 def node_text(node):
-    """Given a bs4.Tag, get the text content in a pretty way
+    """Given a bs4.Tag, get the text content in a pretty way.
 
-    :param node: A bs4.Tag
-    :returns: The text content of the Tag
+    >>> node = soup.select_one("h1")
+    >>> node_text(node)
+    'Header Text'
     """
     if node is None:
         return
