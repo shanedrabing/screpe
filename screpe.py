@@ -16,11 +16,9 @@ import time
 import bs4
 import requests
 import selenium.webdriver
-
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait as WDW
-
 
 # CONSTANTS
 
@@ -41,13 +39,18 @@ _HEADERS_MOZ = {"User-Agent": _UA_MOZ}
 
 
 def node_text(node):
+    """Given a bs4.Tag, get the text content in a pretty way
+
+    :param node: A bs4.Tag
+    :returns: The text content of the Tag
+    """
     if node is None:
         return
     return " ".join(node.get_text(" ").split())
 
 
-def get(url), headers=_HEADERS_MOZ:
-    resp = requests.get(url, headers=headers)
+def get(url):
+    resp = requests.get(url, headers=_HEADERS_MOZ)
     if resp.status_code != 200:
         return
     return resp.content
@@ -90,9 +93,7 @@ class Screpe:
     def __del__(self):
         self.driver_close()
 
-
     # METHODS (RATE-LIMITING)
-
 
     def halt(self):
         while time.time() < self.info["time"] + self.info["pause"]:
@@ -102,9 +103,7 @@ class Screpe:
     def halt_duration(self, seconds):
         self.info["pause"] = max(0, float(seconds))
 
-
     # METHODS (CACHE)
-
 
     def cache_on(self):
         self.info["caching"] = True
@@ -145,13 +144,11 @@ class Screpe:
 
         return self.cache[key]
 
-
     # METHODS (REQUESTS)
-
 
     def get(self, url):
         content = self.cache_access(("requests", url),
-            lambda: self.halt() or get(url))
+                                    lambda: self.halt() or get(url))
         soup = self.cache_access(("bs4", url), lambda: cook(content))
         return soup
 
@@ -160,7 +157,7 @@ class Screpe:
 
     def download(self, url, fpath):
         content = self.cache_access(("requests", url),
-            lambda: self.halt() or get(url))
+                                    lambda: self.halt() or get(url))
         if content is None:
             return
         with open(fpath, "wb") as fh:
@@ -176,15 +173,13 @@ class Screpe:
         dfs = pandas.read_html(url)
         dfs[which].to_csv(fpath, index=index)
 
-
     # METHODS (SELENIUM)
-
 
     def driver_launch(self):
         # lazy import
         if "webdriver_manager" not in globals():
             import webdriver_manager.firefox
-        
+
         # silent logging
         os.environ["WDM_LOG_LEVEL"] = "0"
 
@@ -195,7 +190,7 @@ class Screpe:
         # install driver
         gdm = webdriver_manager.firefox.GeckoDriverManager
         path = gdm(print_first_line=False).install()
-        
+
         # assign driver to instance
         self.driver = selenium.webdriver.Firefox(
             executable_path=path, options=opts)
