@@ -1,3 +1,8 @@
+---
+---
+
+---
+
 <div align="center">
 
 # Screpe
@@ -6,7 +11,13 @@ High-level Python web scraping.
 
 <img src="docs/crepe.jpg" width="60%" />
 
-(Crepes not included)<br>
+(Crepes not included)
+
+<br>
+
+---
+
+<br>
 
 ## Installation
 
@@ -32,6 +43,12 @@ python setup.py install
 
 You can also simply download `screpe.py` and place it in your working directory.
 
+<br>
+
+---
+
+<br>
+
 <div align="center">
 
 ## Getting Started
@@ -46,18 +63,30 @@ import screpe
 scr = Screpe()
 ```
 
+<br>
+
 ### Requests and BeautifulSoup
+
+<br>
 
 ### Selenium
 
+<br>
+
 ### Rate-Limiting
+
+<br>
 
 ### Caching
 
-<div align="center">
+<br><br><div align="center">
+
+---
 
 ## License
 
 </div>
 
 [MIT](https://choosealicense.com/licenses/mit/)
+
+---
