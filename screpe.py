@@ -31,6 +31,7 @@ MEM = lambda: None
 # webdriver methods
 BY_SELECTOR = selenium.webdriver.common.by.By.CSS_SELECTOR
 BY_XPATH = selenium.webdriver.common.by.By.XPATH
+EX_TIMEOUT = selenium.common.exceptions.TimeoutException
 
 # user agent headers
 USER_MOZ = "Mozilla/5.0 (Windows NT 5.1; rv:52.0) Gecko/20100101 Firefox/103.0"
@@ -148,6 +149,7 @@ def driver_close():
         print("Closing webdriver...", end="\r")
         MEM.driver.close()
         print(20 * " ", end = "\r")
+        del MEM.driver
 
 
 def _driver_id():
@@ -189,13 +191,18 @@ def driver_get(url):
 
 
 def driver_wait_for(selector, timeout=10):
-    wait = WDW(MEM.driver, timeout)
-    elem = (BY_SELECTOR, selector)
-    wait.until(EC.visibility_of_element_located(elem))
+    try:
+        wait = WDW(MEM.driver, timeout)
+        elem = (BY_SELECTOR, selector)
+        wait.until(EC.visibility_of_element_located(elem))
+    except EX_TIMEOUT:
+        return False
+    return True
 
 
 def driver_click(selector):
-    driver_wait_for(selector)
+    if not driver_wait_for(selector):
+        return
     node = MEM.driver.find_element(BY_SELECTOR, selector)
     node.click()
     return node
