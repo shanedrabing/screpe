@@ -7,10 +7,10 @@ __email__ = "shane.drabing@gmail.com"
 # IMPORTS
 
 
-import atexit
 import concurrent.futures
 import os
 import pickle
+import ssl
 import time
 
 import bs4
@@ -25,60 +25,19 @@ from selenium.webdriver.support.ui import WebDriverWait as WDW
 # CONSTANTS
 
 
-# global variable on which to store elements
-MEM = lambda: None
+# refresh rate
+PAUSE = 1 / 60
 
 # webdriver methods
 BY_SELECTOR = selenium.webdriver.common.by.By.CSS_SELECTOR
 BY_XPATH = selenium.webdriver.common.by.By.XPATH
-EX_TIMEOUT = selenium.common.exceptions.TimeoutException
 
 # user agent headers
 USER_MOZ = "Mozilla/5.0 (Windows NT 5.1; rv:52.0) Gecko/20100101 Firefox/103.0"
 HEADERS_MOZ = {"User-Agent": USER_MOZ}
 
 
-# CLASSES
-
-
-# some extra methods compared to a BeautifulSoup object
-class BodaciousSoup(bs4.BeautifulSoup):
-    def select_one_attr(self, selector, attr):
-        return safe_attr(self.select_one(selector), attr)
-
-    def select_attr(self, selector, attr):
-        return [safe_attr(node, attr) for node in self.select(selector)]
-
-    def select_one_text(self, selector):
-        return node_text(self.select_one(selector))
-
-    def select_text(self, selector):
-        return list(map(node_text, self.select(selector)))
-
-
-# used for caching results from a function
-class Cache:
-    def __init__(self):
-        self.dct = dict()
-
-    def access(self, key, fallback):
-        if key not in self.dct:
-            value = fallback()
-            if value is None:
-                return
-            self.dct[key] = value
-        return self.dct[key]
-
-    def save(self, fpath):
-        with open(fpath, "wb") as fh:
-            pickle.dump(self.dct, fh)
-
-    def load(self, fpath):
-        with open(fpath, "rb") as fh:
-            self.dct = pickle.load(fh)
-
-
-# FUNCTIONS (GENERAL)
+# HELPERS
 
 
 def node_text(node):
@@ -87,15 +46,17 @@ def node_text(node):
     return " ".join(node.get_text(" ").split())
 
 
+def get(url):
+    resp = requests.get(url, headers=HEADERS_MOZ)
+    if resp.status_code != 200:
+        return
+    return resp.content
+
+
 def cook(html):
-    return BodaciousSoup(html, "lxml")
-
-
-def safe_attr(obj, attr):
-    try:
-        return obj[attr]
-    except KeyError:
-        pass
+    if html is None:
+        return
+    return bs4.BeautifulSoup(html, "lxml")
 
 
 def thread(f, *args):
@@ -103,199 +64,192 @@ def thread(f, *args):
         return list(exe.map(f, *args))
 
 
-def rate_limit(key, interval, lookup=dict()):
-    if key not in lookup:
-        lookup[key] = 0
-    while (time.monotonic() - lookup[key]) < interval:
-        time.sleep(0.01)
-    lookup[key] = time.monotonic()
-
-
-def wait_for(f, limit=10, pause=0.1):
+def wait_for(f, limit=10):
     start = time.time()
     while not f():
         if start + limit < time.time():
             raise Exception(f"Timeout waiting for {f.__name__}")
-        time.sleep(pause)
+        time.sleep(PAUSE)
 
 
-# FUNCTIONS (SELENIUM)
+# CLASSES
 
 
-def driver_launch():
-    # lazy import
-    if "webdriver_manager" not in globals():
-        import webdriver_manager.firefox
+class Screpe:
+    def __init__(self):
+        self.driver = None
+        self.cache = dict()
+        self.info = {
+            "caching": False,
+            "driver_id": None,
+            "node": None,
+            "pause": 0,
+            "time": 0,
+            "user-agent": USER_MOZ,
+        }
 
-    # silent WDM
-    print("Launching webdriver...", end="\r")
-    os.environ["WDM_LOG_LEVEL"] = "0"
-
-    # options
-    opts = selenium.webdriver.firefox.options.Options()
-    opts.add_argument("--headless")
-
-    # WDM path and launch
-    gdm = webdriver_manager.firefox.GeckoDriverManager
-    path = gdm(print_first_line=False).install()
-    MEM.driver = selenium.webdriver.Firefox(executable_path=path, options=opts)
-
-    # clear message
-    print(20 * " ", end = "\r")
+    def __del__(self):
+        self.driver_close()
 
 
-def driver_close():
-    if "driver" in dir(MEM):
-        print("Closing webdriver...", end="\r")
-        MEM.driver.close()
-        print(20 * " ", end = "\r")
-        del MEM.driver
+    # METHODS (RATE-LIMITING)
 
 
-def _driver_id():
-    return MEM.driver.find_element(BY_XPATH, "html").id
+    def halt(self):
+        while time.time() < self.info["time"] + self.info["pause"]:
+            time.sleep(PAUSE)
+        self.info["time"] = time.time()
+
+    def halt_duration(self, seconds):
+        self.info["pause"] = max(0, float(seconds))
 
 
-def _driver_loaded():
-    return MEM.old_id != _driver_id()
+    # METHODS (CACHE)
 
 
-def driver_open(url):
-    # global rate limited set by module functions
-    rate_limit("global", MEM.limit)
+    def cache_on(self):
+        self.info["caching"] = True
 
-    if "driver" not in dir(MEM):
-        driver_launch()
-    MEM.old_id = _driver_id()    
-    MEM.driver.get(url)
-    wait_for(_driver_loaded)
-    del MEM.old_id
+    def cache_off(self):
+        self.info["caching"] = False
 
+    def cache_clear(self):
+        self.cache = dict()
 
-def driver_source():
-    return MEM.driver.page_source
+    def cache_save(self, fpath):
+        tmp = {
+            k[0]: self.cache[k]
+            for k in self.cache
+            if k[0] != "bs4"
+        }
 
+        with open(fpath, "wb") as fh:
+            pickle.dump(tmp, fh)
 
-def driver_get_content(url):
-    def f():
-        driver_open(url)
-        return driver_source()
+    def cache_load(self, fpath, activate=True):
+        if activate:
+            self.cache_on()
+        with open(fpath, "rb") as fh:
+            self.cache = pickle.load(fh)
 
-    if MEM.is_caching:
-        return MEM.cache.access(url, f)
-    return f()
+    def cache_access(self, key, expr):
+        # check to see if we are caching
+        if not self.info["caching"]:
+            return expr()
 
+        # run the expression if not in cache
+        if key not in self.cache:
+            value = expr()
+            if value is None:
+                return
+            self.cache[key] = value
 
-def driver_get(url):
-    return cook(driver_get_content(url))
-
-
-def driver_wait_for(selector, timeout=10):
-    try:
-        wait = WDW(MEM.driver, timeout)
-        elem = (BY_SELECTOR, selector)
-        wait.until(EC.visibility_of_element_located(elem))
-    except EX_TIMEOUT:
-        return False
-    return True
-
-
-def driver_click(selector):
-    if not driver_wait_for(selector):
-        return
-    node = MEM.driver.find_element(BY_SELECTOR, selector)
-    node.click()
-    return node
+        return self.cache[key]
 
 
-# FUNCTIONS (CACHING)
+    # METHODS (REQUESTS)
 
 
-def clear_cache():
-    MEM.cache = Cache()
+    def get(self, url):
+        content = self.cache_access(("requests", url),
+            lambda: self.halt() or get(url))
+        soup = self.cache_access(("bs4", url), lambda: cook(content))
+        return soup
 
+    def get_many(self, urls):
+        return thread(self.get, urls)
 
-def save_cache(fpath):
-    if "cache" in dir(MEM):
-        MEM.cache.save(fpath)
-
-
-def load_cache(fpath):
-    if "cache" not in dir(MEM):
-        clear_cache()
-    MEM.cache.load(fpath)
-
-
-def set_cache_active():
-    MEM.is_caching = True
-    if "cache" not in dir(MEM):
-        clear_cache()
-
-
-def set_cache_inactive():
-    MEM.is_caching = False
-    
-
-
-# FUNCTIONS (SCREPE)
-
-
-def set_rate_limit(seconds):
-    MEM.limit = max(0, float(seconds))
-
-
-def get_content(url):
-    def f():
-        resp = requests.get(url, headers=HEADERS_MOZ)
-        if resp.status_code != 200:
+    def download(self, url, fpath):
+        self.halt()
+        content = self.cache_access(("requests", url), lambda: get(url))
+        if content is None:
             return
-        return resp.content
+        with open(fpath, "wb") as fh:
+            fh.write(content)
 
-    if MEM.is_caching:
-        return MEM.cache.access(url, f)
-    return f()
+    def download_table(self, url, fpath, which=0, index=False):
+        # lazy import
+        if "pandas" not in globals():
+            ssl._create_default_https_context = ssl._create_unverified_context
+            import pandas
 
-
-def get(url):
-    # global rate limited set by module functions
-    rate_limit("global", MEM.limit)
-
-    content = get_content(url)
-    if content is None:
-        return
-    return cook(content)
+        self.halt()
+        dfs = pandas.read_html(url)
+        dfs[which].to_csv(fpath, index=index)
 
 
-def get_many(urls):
-    return thread(get, urls)
+    # METHODS (SELENIUM)
 
 
-def download(url, fpath):
-    # global rate limited set by module functions
-    rate_limit("global", MEM.limit)
+    def driver_launch(self):
+        # lazy import
+        if "webdriver_manager" not in globals():
+            import webdriver_manager.firefox
+        
+        # silent logging
+        os.environ["WDM_LOG_LEVEL"] = "0"
 
-    content = get_content(url)
-    if content is None:
-        return
-    with open(fpath, "wb") as fh:
-        fh.write(content)
+        # options
+        opts = selenium.webdriver.firefox.options.Options()
+        opts.add_argument("--headless")
 
+        # install driver
+        gdm = webdriver_manager.firefox.GeckoDriverManager
+        path = gdm(print_first_line=False).install()
+        
+        # assign driver to instance
+        self.driver = selenium.webdriver.Firefox(
+            executable_path=path, options=opts)
 
-def download_table(url, fpath, which=0, index=False):
-    # global rate limited set by module functions
-    rate_limit("global", MEM.limit)
+    def driver_close(self):
+        if self.driver is not None:
+            self.driver.close()
 
-    # lazy import
-    if "pandas" not in globals():
-        import pandas
+    def driver_restart(self):
+        driver_close()
+        driver_launch()
 
-    dfs = pandas.read_html(url)
-    dfs[which].to_csv(fpath, index=index)
+    def driver_id(self):
+        return self.driver.find_element(BY_XPATH, "html").id
 
+    def driver_loaded(self):
+        return self.info["driver_id"] != self.driver_id()
 
-# SCRIPT
+    def open(self, url):
+        if self.driver is None:
+            self.driver_launch()
+        self.halt()
+        self.bide(lambda: self.driver.get(url))
 
+    def source(self):
+        if self.driver is None:
+            return
+        return cook(self.driver.page_source)
 
-set_rate_limit(0)
-set_cache_inactive()
-atexit.register(driver_close)
+    def graze(self, url):
+        self.open(url)
+        return self.source()
+
+    def bide(self, expr):
+        self.info["driver_id"] = self.driver_id()
+        expr()
+        wait_for(self.driver_loaded)
+
+    def select(self, selector):
+        self.info["node"] = self.driver.find_element(BY_SELECTOR, selector)
+        return self.info["node"]
+
+    def click(self, selector):
+        self.info["node"] = self.select(selector)
+        self.info["node"].click()
+        return self.info["node"]
+
+    def send_keys(self, message):
+        if self.info["node"] is not None:
+            self.info["node"].send_keys(message)
+
+    def enter(self):
+        self.send_keys(Keys.ENTER)
+
+    def tab(self):
+        self.send_keys(Keys.TAB)
