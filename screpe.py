@@ -26,15 +26,15 @@ from selenium.webdriver.support.ui import WebDriverWait as WDW
 
 
 # refresh rate
-PAUSE = 1 / 60
+_PAUSE = 1 / 60
 
 # webdriver methods
-BY_SELECTOR = selenium.webdriver.common.by.By.CSS_SELECTOR
-BY_XPATH = selenium.webdriver.common.by.By.XPATH
+_BY_SELECTOR = selenium.webdriver.common.by.By.CSS_SELECTOR
+_BY_XPATH = selenium.webdriver.common.by.By.XPATH
 
 # user agent headers
-USER_MOZ = "Mozilla/5.0 (Windows NT 5.1; rv:52.0) Gecko/20100101 Firefox/103.0"
-HEADERS_MOZ = {"User-Agent": USER_MOZ}
+_UA_MOZ = "Mozilla/5.0 (Windows NT 5.1; rv:52.0) Gecko/20100101 Firefox/103.0"
+_HEADERS_MOZ = {"User-Agent": _UA_MOZ}
 
 
 # HELPERS
@@ -46,8 +46,8 @@ def node_text(node):
     return " ".join(node.get_text(" ").split())
 
 
-def get(url):
-    resp = requests.get(url, headers=HEADERS_MOZ)
+def get(url), headers=_HEADERS_MOZ:
+    resp = requests.get(url, headers=headers)
     if resp.status_code != 200:
         return
     return resp.content
@@ -69,7 +69,7 @@ def wait_for(f, limit=10):
     while not f():
         if start + limit < time.time():
             raise Exception(f"Timeout waiting for {f.__name__}")
-        time.sleep(PAUSE)
+        time.sleep(_PAUSE)
 
 
 # CLASSES
@@ -85,7 +85,6 @@ class Screpe:
             "node": None,
             "pause": 0,
             "time": 0,
-            "user-agent": USER_MOZ,
         }
 
     def __del__(self):
@@ -97,7 +96,7 @@ class Screpe:
 
     def halt(self):
         while time.time() < self.info["time"] + self.info["pause"]:
-            time.sleep(PAUSE)
+            time.sleep(_PAUSE)
         self.info["time"] = time.time()
 
     def halt_duration(self, seconds):
@@ -160,8 +159,8 @@ class Screpe:
         return thread(self.get, urls)
 
     def download(self, url, fpath):
-        self.halt()
-        content = self.cache_access(("requests", url), lambda: get(url))
+        content = self.cache_access(("requests", url),
+            lambda: self.halt() or get(url))
         if content is None:
             return
         with open(fpath, "wb") as fh:
@@ -210,7 +209,7 @@ class Screpe:
         driver_launch()
 
     def driver_id(self):
-        return self.driver.find_element(BY_XPATH, "html").id
+        return self.driver.find_element(_BY_XPATH, "html").id
 
     def driver_loaded(self):
         return self.info["driver_id"] != self.driver_id()
@@ -236,7 +235,7 @@ class Screpe:
         wait_for(self.driver_loaded)
 
     def select(self, selector):
-        self.info["node"] = self.driver.find_element(BY_SELECTOR, selector)
+        self.info["node"] = self.driver.find_element(_BY_SELECTOR, selector)
         return self.info["node"]
 
     def click(self, selector):
