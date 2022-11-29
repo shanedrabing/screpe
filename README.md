@@ -15,7 +15,8 @@ High-level Python web scraping.
 
 ## Installation
 
-</div><br>
+</div>
+<br>
 
 ### Using `pip`
 
@@ -47,7 +48,10 @@ You can also simply download `screpe.py` and place it in your working directory.
 
 ## Getting Started
 
-</div><br>
+</div>
+<br>
+
+### Initializing Screpe
 
 Import the module in Python, and initialize a `Screpe` object.
 
@@ -63,6 +67,14 @@ scr = Screpe()
 
 <br>
 
+### Downloading a Webpage or a File
+
+<br>
+
+### Downloading an HTML Table
+
+<br>
+
 ### Selenium
 
 <br>
@@ -73,12 +85,17 @@ scr = Screpe()
 
 ### Caching
 
-<br><br><div align="center">
+<br>
+<br>
+<div align="center">
 
 ---
 
 ## License
 
-</div><br>
+</div>
+<br>
 
-[MIT](https://choosealicense.com/licenses/mit/)
+[MIT License](https://choosealicense.com/licenses/mit/)
+
+Copyright (c) 2022 [Shane Drabing](\:\-\))
