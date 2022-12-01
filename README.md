@@ -70,9 +70,9 @@ import anything else!
 
 ### Requests and BeautifulSoup
 
-If you are familiar with web scraping in Python, then you've probably used the
-`requests` and `bs4` packages before. There are a couple of static methods that
-Screpe provides to make their usage even easier!
+If you are familiar with web scraping in Python, then you have probably used
+the `requests` and `bs4` packages before. There are a couple of static methods
+that Screpe provides to make their usage even easier!
 
 ```python
 # a webpage we want to scrape
@@ -104,7 +104,7 @@ next sections).
 
 ### Downloading a Webpage or a File
 
-Commonly, we just want to download an image, webpage, generic file, etc. Let's
+Commonly, we just want to download an image, webpage, generic file, etc. Let us
 see how to do this with Screpe!
 
 ```python
@@ -168,6 +168,8 @@ scr.bide(lambda: scr.send_enter())
 soup = scr.source()
 ```
 
+Caching does not apply to the Selenium-related functions, it is a stateful activity and we cannot simply load an old webdriver state.
+
 <br>
 
 ### Asynchronous Requests
@@ -208,7 +210,7 @@ already have the reponse!
 
 ### Caching
 
-Sometimes, we have to request many pages. So that we don't waste bandwidth, or
+Sometimes, we have to request many pages. So that we do not waste bandwidth, or
 a rate limit, we can use cached reponses. Note that caching is on by default,
 turn it off if you want real-time responses.
 
