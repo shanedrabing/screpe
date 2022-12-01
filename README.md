@@ -93,6 +93,7 @@ We can marry these two functions with the instance method `Screpe.dine`.
 Remember that we have the `scr` object from the section above.
 
 ```python
+# get and cook
 soup = scr.dine(url)
 ```
 
