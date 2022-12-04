@@ -207,8 +207,8 @@ class Screpe:
             self.driver.close()
 
     def driver_restart(self):
-        driver_close()
-        driver_launch()
+        self.driver_close()
+        self.driver_launch()
 
     def driver_id(self):
         return self.driver.find_element(_BY_XPATH, "html").id
