@@ -1,6 +1,6 @@
 __author__ = "Shane Drabing"
 __license__ = "MIT"
-__version__ = "0.0.5"
+__version__ = "0.0.6"
 __email__ = "shane.drabing@gmail.com"
 
 
