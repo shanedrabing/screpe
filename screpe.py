@@ -215,14 +215,14 @@ class Screpe:
     def wait_and_select(self, selector):
 
         def f():
-            node = screpe.select(selector)
+            node = self.select(selector)
             if node is None:
                 time.sleep(_PAUSE)
                 return False
             return True
 
-        screpe.wait_until(f)
-        return screpe.select(selector)
+        self.wait_until(f)
+        return self.select(selector)
 
     def click(self, selector):
         self._node = self.select(selector)
