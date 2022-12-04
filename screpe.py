@@ -78,9 +78,9 @@ class Screpe:
         start = time.time()
         while not f():
             if start + limit < time.time():
-                raise Exception(f"Timeout waiting for {f.__name__}")
+                raise RuntimeError(f"Timeout waiting for {f.__name__}")
             time.sleep(_PAUSE)
-    
+
     # INTIALIZATION
     
     def __init__(self, is_caching=True):
