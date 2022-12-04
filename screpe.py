@@ -19,7 +19,7 @@ import selenium.webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait as WDW
-
+from selenium.common.exceptions import NoSuchElementException
 
 # CONSTANTS
 
@@ -206,8 +206,23 @@ class Screpe:
         self.wait_until(self.driver_loaded)
 
     def select(self, selector):
-        self._node = self.driver.find_element(_BY_SELECTOR, selector)
-        return self._node
+        try:
+            self._node = self.driver.find_element(_BY_SELECTOR, selector)
+            return self._node
+        except NoSuchElementException:
+            pass
+
+    def wait_and_select(self, selector):
+
+        def f():
+            node = screpe.select(selector)
+            if node is None:
+                time.sleep(_PAUSE)
+                return False
+            return True
+
+        screpe.wait_until(f)
+        return screpe.select(selector)
 
     def click(self, selector):
         self._node = self.select(selector)
