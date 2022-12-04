@@ -74,7 +74,7 @@ class Screpe:
             return list(exe.map(f, *args))
 
     @staticmethod
-    def wait_for(f, limit=10):
+    def wait_until(f, limit=10):
         start = time.time()
         while not f():
             if start + limit < time.time():
@@ -151,35 +151,6 @@ class Screpe:
 
         return self.cache[key]
 
-    # METHODS (REQUESTS)
-
-    def dine(self, url):
-        expr = lambda: self.halt() or self.get(url)
-        content = self.cache_access(("requests", url), expr)
-        soup = self.cache_access(("bs4", url), lambda: self.cook(content))
-        return soup
-
-    def dine_many(self, urls):
-        return self.thread(self.dine, urls)
-
-    def download(self, url, fpath):
-        expr = lambda: self.halt() or self.get(url)
-        content = self.cache_access(("requests", url), expr)
-        if content is None:
-            return
-        with open(fpath, "wb") as fh:
-            fh.write(content)
-
-    def download_table(self, url, fpath, which=0, index=False):
-        # lazy import
-        if "pandas" not in globals():
-            ssl._create_default_https_context = ssl._create_unverified_context
-            import pandas
-
-        self.halt()
-        dfs = pandas.read_html(url)
-        dfs[which].to_csv(fpath, index=index)
-
     # METHODS (SELENIUM)
 
     def driver_launch(self):
@@ -234,7 +205,7 @@ class Screpe:
     def bide(self, expr):
         self._id = self.driver_id()
         expr()
-        self.wait_for(self.driver_loaded)
+        self.wait_until(self.driver_loaded)
 
     def select(self, selector):
         self._node = self.driver.find_element(_BY_SELECTOR, selector)
@@ -254,3 +225,32 @@ class Screpe:
 
     def send_tab(self):
         self.send_keys(Keys.TAB)
+
+    # METHODS (REQUESTS)
+
+    def dine(self, url):
+        expr = lambda: self.halt() or self.get(url)
+        content = self.cache_access(("requests", url), expr)
+        soup = self.cache_access(("bs4", url), lambda: self.cook(content))
+        return soup
+
+    def dine_many(self, urls):
+        return self.thread(self.dine, urls)
+
+    def download(self, url, fpath):
+        expr = lambda: self.halt() or self.get(url)
+        content = self.cache_access(("requests", url), expr)
+        if content is None:
+            return
+        with open(fpath, "wb") as fh:
+            fh.write(content)
+
+    def download_table(self, url, fpath, which=0, index=False):
+        # lazy import
+        if "pandas" not in globals():
+            ssl._create_default_https_context = ssl._create_unverified_context
+            import pandas
+
+        self.halt()
+        dfs = pandas.read_html(url)
+        dfs[which].to_csv(fpath, index=index)
