@@ -187,7 +187,51 @@ class Screpe:
     def driver_loaded(self):
         return self._id != self.driver_id()
 
+    # FUNCTIONS (BROWSING)
+
+    def open(self, url):
+        if self.driver is None:
+            self.driver_launch()
+        self.halt()
+        self.bide(lambda: self.driver.get(url))
+
+    def source(self):
+        if self.driver is None:
+            return
+        return self.cook(self.driver.page_source)
+
+    def bide(self, expr):
+        self._id = self.driver_id()
+        expr()
+        self.wait_until(self.driver_loaded)
+
+    def select(self, selector):
+        self._node = self.driver.find_element(_BY_SELECTOR, selector)
+        return self._node
+
+    def click(self, selector):
+        self._node = self.select(selector)
+        self._node.click()
+        return self._node
+
+    def send_keys(self, message):
+        if self._node is not None:
+            self._node.send_keys(message)
+
+    def send_enter(self):
+        self.send_keys(Keys.ENTER)
+
+    def send_tab(self):
+        self.send_keys(Keys.TAB)
+
     # METHODS (REQUESTING)
+
+    def browse(self, url):
+        self.open(url)
+        return self.source()
+
+    def browse_many(self, urls):
+        return list(map(self.browse, urls))
 
     def dine(self, url):
         expr = lambda: self.halt() or self.get(url)
@@ -215,44 +259,3 @@ class Screpe:
         self.halt()
         dfs = pandas.read_html(url)
         dfs[which].to_csv(fpath, index=index)
-
-    # FUNCTIONS (BROWSING)
-
-    def open(self, url):
-        if self.driver is None:
-            self.driver_launch()
-        self.halt()
-        self.bide(lambda: self.driver.get(url))
-
-    def source(self):
-        if self.driver is None:
-            return
-        return self.cook(self.driver.page_source)
-
-    def browse(self, url):
-        self.open(url)
-        return self.source()
-
-    def bide(self, expr):
-        self._id = self.driver_id()
-        expr()
-        self.wait_until(self.driver_loaded)
-
-    def select(self, selector):
-        self._node = self.driver.find_element(_BY_SELECTOR, selector)
-        return self._node
-
-    def click(self, selector):
-        self._node = self.select(selector)
-        self._node.click()
-        return self._node
-
-    def send_keys(self, message):
-        if self._node is not None:
-            self._node.send_keys(message)
-
-    def send_enter(self):
-        self.send_keys(Keys.ENTER)
-
-    def send_tab(self):
-        self.send_keys(Keys.TAB)
