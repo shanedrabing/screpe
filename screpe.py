@@ -40,6 +40,9 @@ _HEADERS_MOZ = {"User-Agent": _UA_MOZ}
 
 
 class Screpe:
+    # ATTRIBUTES
+
+    Keys = Keys
 
     # STATIC METHODS
     
